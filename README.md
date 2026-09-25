@@ -1,38 +1,73 @@
-# Finz - AI-Native Financial Review
+# Finz — AI-Native Financial Review
 
-Finz is a financial review app made for NYC Restaurant Co.
+Finz is an AI-assisted financial review application built for NYC Restaurant Co.
 
-It takes a bank transaction file and helps turn it into a clean monthly
-P&L. It also finds transactions that may need review, shows changes
-between months, and has an AI chat assistant for asking questions about
-the financial data.
+The application takes a bank transaction file, categorizes the transactions,
+builds a monthly P&L, identifies transactions that require review, detects
+material month-to-month changes, and provides an AI financial analyst for
+natural-language questions about the financial data.
+
+The core design principle is:
+
+> AI is used for understanding and explanation, while financial calculations
+> are performed deterministically from the underlying transaction data.
+
+---
+
+# Links
+
+* **GitHub repository:** [github.com/harinibhandari/Finz_app](https://github.com/harinibhandari/Finz_app)
+* **Live deployed application:** [finz-app.onrender.com](https://finz-app.onrender.com/)
+
+> Note: the live deployment is hosted on Render's free tier, so the
+> instance may spin down after inactivity. The first request after a
+> period of idleness can take up to ~30-60 seconds to wake up.
+
+---
 
 ## What the app does
 
-The main flow of the app is:
+The main workflow is:
 
-Upload transactions  
-→ Categorize transactions  
-→ Review flagged transactions  
-→ Calculate P&L  
-→ Find monthly changes  
-→ Explain the changes  
-→ Ask questions using AI
+```text
+Upload transactions
+        ↓
+Read and structure transaction data
+        ↓
+Apply deterministic categorization rules
+        ↓
+Use AI for transactions not matched by rules
+        ↓
+Flag AI-classified transactions for review
+        ↓
+Human review / manual correction
+        ↓
+Calculate monthly P&L
+        ↓
+Detect material month-to-month changes
+        ↓
+Ask questions using the AI financial analyst
+```
 
-## Features
+---
 
-- Upload an Excel transaction file
-- Automatically categorize transactions
-- Use AI to help with transaction categorization
-- Check AI results using simple rules
-- Flag transactions that need review
-- Manually change a transaction category
-- Calculate monthly P&L
-- Compare P&L between months
-- Find important changes in revenue and expenses
-- Show transactions behind a change
-- Ask questions to the AI financial analyst
-- Keep non-P&L transactions separate
+# Features
+
+* Upload an Excel transaction file
+* Read and structure transaction data
+* Automatically categorize transactions
+* Use deterministic rules for known transaction patterns
+* Use AI classification for transactions that do not match a rule
+* Flag AI-classified transactions for manual review
+* Manually recategorize transactions
+* Persist corrected transaction categories
+* Calculate monthly P&L using pandas
+* Separate P&L and non-P&L transactions
+* Detect material month-to-month changes
+* Query transactions behind financial figures
+* Ask questions using an AI financial analyst
+* Filter transactions by month, category, and confidence
+* Display the underlying transaction data used by the application
 
 ---
 
@@ -42,8 +77,11 @@ Upload transactions
 
 You need:
 
-- Python 3.10 or newer
-- Git
+* Python 3.10 or newer
+* Git
+* A Groq API key
+
+---
 
 ## 1. Clone the project
 
@@ -51,6 +89,8 @@ You need:
 git clone https://github.com/harinibhandari/Finz_app.git
 cd Finz_app
 ```
+
+---
 
 ## 2. Create a virtual environment
 
@@ -68,13 +108,43 @@ python -m venv venv
 source venv/bin/activate
 ```
 
-## 3. Install the required packages
+---
+
+## 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 5. Start the app
+---
+
+## 4. Configure the API key
+
+Create a `.env` file inside the `backend` directory:
+
+```text
+backend/.env
+```
+
+Add:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+```
+
+The application uses the Groq API for:
+
+* AI transaction categorization
+* AI financial analyst chat
+* AI variance explanations through the variance explanation function
+
+Do not commit your real API key to GitHub.
+
+---
+
+## 5. Start the application
+
+From the project root:
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
@@ -86,7 +156,25 @@ Then open:
 http://127.0.0.1:8000
 ```
 
-Upload:
+---
+
+# Input Data
+
+The application accepts:
+
+```text
+.xlsx
+.xls
+.csv
+```
+
+The expected transaction data is loaded through:
+
+```text
+backend/ingest.py
+```
+
+The provided transaction workbook is:
 
 ```text
 data/transactions.xlsx
@@ -94,14 +182,19 @@ data/transactions.xlsx
 
 ---
 
-# How the app works
+# How the application works
 
 ## 1. Upload
 
-The user uploads the bank transaction Excel file.
+The user uploads a transaction file through the web interface.
 
-The app reads the file and converts the rows into structured transaction
-data.
+The backend saves the uploaded file as:
+
+```text
+data/transactions.xlsx
+```
+
+The transaction data is then loaded into a pandas DataFrame.
 
 This part is handled by:
 
@@ -109,103 +202,323 @@ This part is handled by:
 backend/ingest.py
 ```
 
-## 2. Categorization
+---
 
-Each transaction is given a category.
+# 2. Transaction categorization
 
-The app uses both:
+Finz uses a two-stage categorization process.
 
-* Simple rules based on the transaction description
-* AI classification
+## Stage 1 — Deterministic rules
 
-The two results are compared to help decide whether a transaction is
-safe to accept or needs review.
+The application first checks each transaction against the rules defined in:
 
-Files used:
+```text
+backend/rules.py
+```
+
+The rules use transaction descriptions to identify known patterns.
+
+Examples include:
+
+```text
+rent
+food inventory purchase
+beverage inventory purchase
+POS batch deposits
+catering invoice payments
+payroll
+utilities
+marketing
+equipment purchases
+loan repayments
+owner distributions
+tax remittances
+gift card sales
+```
+
+When a rule matches, the transaction is categorized directly.
+
+These transactions receive:
+
+```text
+confidence = high
+```
+
+---
+
+## Stage 2 — AI categorization
+
+Transactions that do not match a deterministic rule are sent to the
+LLM for classification.
+
+The AI receives information such as:
+
+* Transaction ID
+* Description
+* Counterparty
+* Amount
+
+The model selects a subcategory from the application's predefined taxonomy.
+
+The AI also returns a short rationale.
+
+The categorization is handled by:
 
 ```text
 backend/categorize.py
-backend/rules.py
+```
+
+The AI model used is:
+
+```text
+openai/gpt-oss-120b
+```
+
+through the Groq API.
+
+---
+
+# 3. Review workflow
+
+Transactions that cannot be categorized by a deterministic rule are treated
+as requiring review after AI classification.
+
+They receive:
+
+```text
+confidence = needs_review
+```
+
+These transactions are displayed in the transaction table.
+
+The user can:
+
+* Filter for transactions needing review
+* Inspect the transaction
+* Select another category
+* Correct the transaction manually
+
+Manual corrections are marked as:
+
+```text
+corrected = True
+confidence = high
+```
+
+The correction is then persisted using:
+
+```text
+backend/store.py
+```
+
+This creates a human-in-the-loop workflow rather than relying entirely on
+the AI classification.
+
+---
+
+# 4. Transaction taxonomy
+
+Finz uses a two-level accounting taxonomy.
+
+## P&L categories
+
+### Revenue
+
+* Food Sales
+* Beverage Sales
+* Catering Revenue
+* Delivery Marketplace Revenue
+* Refunds & Discounts
+
+### COGS
+
+* Food Inventory
+* Beverage Inventory
+
+### Payroll
+
+* Salaries
+* Hourly Wages
+* Payroll Taxes & Benefits
+
+### Operating Expenses
+
+* Rent
+* Utilities
+* Insurance
+* Software & Subscriptions
+* Marketing
+* Repairs & Maintenance
+* Cleaning & Linen
+* Office & Admin Supplies
+* Professional Services
+* Delivery Platform Commission
+* Packaging & Disposables
+
+---
+
+## Non-P&L categories
+
+The application also separates transactions that represent cash movement
+but should not be included directly in the operating P&L.
+
+These include:
+
+* Capital Expenditure
+* Financing - Loan Proceeds
+* Financing - Loan Repayment
+* Owner Equity
+* Tax Remittance
+* Deferred Revenue
+
+The taxonomy is defined in:
+
+```text
 backend/taxonomy.py
 ```
 
-## 3. Review
+---
 
-If the app is not confident about a transaction, it is shown for review.
+# 5. Monthly P&L
 
-The user can change the category from the transaction table.
+The P&L is calculated directly from the categorized transaction DataFrame.
 
-After changing the category, the P&L is updated using the new category.
+The application uses pandas to calculate:
 
-This makes the process human-controlled instead of fully depending on AI.
+```text
+Revenue
+COGS
+Gross Profit
+Payroll
+Operating Expenses
+Operating Profit
+```
 
-## 4. P&L
-
-The P&L is calculated from the transaction data.
-
-It includes:
-
-* Revenue
-* COGS
-* Gross Profit
-* Payroll
-* Operating Expenses
-* Operating Profit
-
-The P&L is calculated using Python and pandas.
-
-The AI does not calculate the financial totals.
-
-The main file for this is:
+The calculation is implemented in:
 
 ```text
 backend/pnl.py
 ```
 
-## 5. Non-P&L transactions
+The P&L calculation does not use an LLM to generate financial totals.
 
-Some bank transactions are not part of the normal P&L.
-
-For example:
-
-* Equipment purchases
-* Loan proceeds
-* Loan repayments
-* Owner transactions
-* Tax payments
-* Other non-P&L cash movements
-
-These are kept separate so they do not get counted as normal revenue or
-expenses.
-
-This is handled in:
+The basic calculation is:
 
 ```text
-backend/taxonomy.py
+Gross Profit
+= Revenue - COGS
+
+Operating Profit
+= Gross Profit - Payroll - Operating Expenses
 ```
 
-## 6. Variance analysis
+Expense categories are converted from their transaction cash-flow signs
+into positive expense values for display.
 
-The app compares the P&L between months.
+---
 
-It looks for changes that are large enough to need attention.
+# 6. Non-P&L activity
 
-The calculation is done using normal Python calculations.
+Some transactions represent cash movements but are not treated as normal
+operating revenue or expenses.
 
-AI is used only to explain the reason for the change.
+Examples include:
 
-This is handled by:
+```text
+Equipment purchases
+Loan proceeds
+Loan repayments
+Owner equity transactions
+Tax remittances
+Gift card sales / deferred revenue
+```
+
+These transactions are kept separate from the P&L.
+
+The application provides a separate non-P&L summary through:
+
+```text
+backend/pnl.py
+```
+
+This prevents non-operating cash movements from being incorrectly included
+in the operating P&L.
+
+---
+
+# 7. Variance analysis
+
+Finz compares the monthly P&L and looks for material changes.
+
+The variance calculation is deterministic.
+
+The application checks:
+
+```text
+Revenue
+COGS
+Payroll
+Operating Expenses
+Operating Profit
+```
+
+A variance is flagged when both conditions are met:
+
+```text
+Absolute change >= $500
+AND
+Percentage change >= 10%
+```
+
+These thresholds are defined in:
 
 ```text
 backend/variance.py
 ```
 
-## 7. AI financial analyst
+The variance calculation itself does not require an LLM.
 
-The app also has a chat section where the user can ask questions about
-the financial data.
+For each detected variance, the application can identify the largest
+transactions contributing to the relevant P&L line.
 
-For example:
+---
+
+# 8. AI variance explanation
+
+The project also contains an AI-based variance explanation function.
+
+The function:
+
+```text
+variance_with_evidence()
+```
+
+uses the transaction data behind a variance and asks the LLM to explain
+what may have driven the change.
+
+The AI is instructed to:
+
+* Use the provided transactions as evidence
+* Reference specific transactions or categories
+* Avoid inventing numbers
+* Avoid claiming that a transaction appeared or disappeared when only a
+  partial transaction list is available
+
+The implementation is in:
+
+```text
+backend/variance.py
+```
+
+The variance calculation remains deterministic; AI is used for explanation.
+
+---
+
+# 9. AI financial analyst
+
+Finz includes a chat interface for asking questions about the financial data.
+
+Example questions:
 
 ```text
 What was the revenue in March?
@@ -218,70 +531,228 @@ What caused the increase in food costs?
 
 Which transactions need review?
 
-Show me the transactions behind this change.
+Show me the largest transactions in March.
+
+What non-P&L activity occurred?
 ```
 
-The AI uses tools to get the actual data from the application.
-
-It does not need to guess the numbers.
-
-This is handled by:
+The AI financial analyst is implemented in:
 
 ```text
 backend/agent.py
 ```
 
----
+The agent is built using:
 
-# Why I used AI
-
-I used AI where understanding the transaction or explaining the data is
-useful.
-
-### Transaction categorization
-
-Bank descriptions can be written in many different ways.
-
-AI helps understand the description and choose a suitable category.
-
-### Variance explanation
-
-The app calculates the actual change using Python.
-
-AI then looks at the related transactions and explains what may have
-caused the change.
-
-### Chat
-
-Users can ask questions in normal language instead of looking through
-the data manually.
+```text
+LangChain
+LangGraph
+Groq
+```
 
 ---
 
-# Where I did not use AI
+# 10. AI tools
 
-Financial calculations should not depend on an AI-generated number.
+The financial analyst has access to tools that retrieve information directly
+from the current transaction DataFrame.
 
-The P&L is calculated directly from the transaction data using pandas.
+The available tools include:
 
-The variance amount is also calculated using Python.
+### `get_pnl`
 
-This makes the financial numbers easier to check and trust.
+Retrieves monthly P&L data.
+
+### `get_transactions`
+
+Retrieves individual transactions filtered by:
+
+* Category
+* Month
+* Number of transactions
+
+### `get_variance_between`
+
+Calculates the change between two selected months.
+
+### `get_review_items`
+
+Retrieves transactions currently marked:
+
+```text
+needs_review
+```
+
+### `get_non_pnl_activity`
+
+Retrieves non-P&L cash movements.
+
+The agent uses these tools to retrieve actual application data instead of
+generating financial totals from its own reasoning.
 
 ---
 
-# Checking AI results
+# 11. Financial calculation safety
 
-The app uses two checks for transaction categories:
+One of the main design principles of Finz is separating:
 
-1. A rule-based result
-2. An AI result
+```text
+Deterministic computation
+```
 
-If the results do not match, the transaction can be sent for review.
+from:
 
-This helps avoid accepting an incorrect AI category without checking it.
+```text
+AI interpretation
+```
 
-The user can also change the category manually.
+Financial totals are calculated using Python and pandas.
+
+For example:
+
+```text
+Monthly Revenue
+Monthly COGS
+Gross Profit
+Payroll
+Operating Expenses
+Operating Profit
+Variance amount
+Variance percentage
+```
+
+are calculated from the transaction data.
+
+The LLM is used for tasks where language understanding is useful:
+
+```text
+Transaction classification
+Variance explanation
+Natural-language financial questions
+```
+
+This makes the numerical calculations traceable to the underlying
+transactions.
+
+---
+
+# 12. Persistence
+
+Finz is currently designed as a simple single-tenant application.
+
+The categorized transaction DataFrame is persisted to:
+
+```text
+data/state.json
+```
+
+This allows user corrections to remain available after the application
+restarts.
+
+The persistence logic is implemented in:
+
+```text
+backend/store.py
+```
+
+The application does not currently require a database.
+
+---
+
+# 13. API endpoints
+
+The FastAPI backend exposes the following endpoints.
+
+### Upload transactions
+
+```http
+POST /api/upload
+```
+
+Uploads and categorizes a transaction file.
+
+---
+
+### Get transactions
+
+```http
+GET /api/transactions
+```
+
+Optional filters:
+
+```text
+month
+category
+confidence
+```
+
+---
+
+### Correct a transaction
+
+```http
+POST /api/correct
+```
+
+Changes the subcategory of a transaction.
+
+---
+
+### Get P&L
+
+```http
+GET /api/pnl
+```
+
+Returns the calculated monthly P&L.
+
+---
+
+### Get non-P&L activity
+
+```http
+GET /api/non-pnl
+```
+
+Returns non-P&L cash movements.
+
+---
+
+### Get variances
+
+```http
+GET /api/variances
+```
+
+Returns material month-to-month P&L changes.
+
+---
+
+### Ask the AI analyst
+
+```http
+POST /api/chat
+```
+
+Example request:
+
+```json
+{
+  "question": "Why did operating profit change between February and March?",
+  "history": []
+}
+```
+
+---
+
+### Get categories
+
+```http
+GET /api/categories
+```
+
+Returns the available top-level categories and subcategories.
 
 ---
 
@@ -291,21 +762,24 @@ The user can also change the category manually.
 Finz_app/
 │
 ├── backend/
-│   ├── ingest.py
-│   ├── taxonomy.py
-│   ├── rules.py
-│   ├── categorize.py
-│   ├── pnl.py
-│   ├── variance.py
+│   ├── __pycache__/
+│   ├── .env
 │   ├── agent.py
+│   ├── categorize.py
+│   ├── ingest.py
+│   ├── main.py
+│   ├── pnl.py
+│   ├── rules.py
 │   ├── store.py
-│   └── main.py
+│   ├── taxonomy.py
+│   └── variance.py
+│
+├── data/
+│   ├── state.json
+│   └── transactions.xlsx
 │
 ├── frontend/
 │   └── index.html
-│
-├── data/
-│   └── transactions.xlsx
 │
 ├── .env.example
 ├── .gitignore
@@ -313,69 +787,71 @@ Finz_app/
 └── requirements.txt
 ```
 
+> `data/state.json` contains the persisted categorized state generated by
+> the application. It should generally not be committed if it contains
+> sensitive financial data.
+
 ---
 
-# Tech Used
+# Main Files
+
+| File                  | Purpose                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `ingest.py`           | Reads and structures the uploaded transaction file               |
+| `taxonomy.py`         | Defines P&L and non-P&L categories                               |
+| `rules.py`            | Contains deterministic transaction categorization rules          |
+| `categorize.py`       | Handles rule-based and AI-assisted categorization                |
+| `pnl.py`              | Calculates monthly P&L and non-P&L summaries                     |
+| `variance.py`         | Detects material changes and contains variance explanation logic |
+| `agent.py`            | Implements the AI financial analyst                              |
+| `store.py`            | Persists categorized data and user corrections                   |
+| `main.py`             | FastAPI application and API endpoints                            |
+| `frontend/index.html` | Web interface                                                    |
+
+---
+
+# Technology Stack
+
+## Backend
 
 * Python
 * FastAPI
 * pandas
 * openpyxl
-* Groq
+
+## AI
+
+* Groq API
+* `openai/gpt-oss-120b`
 * LangChain
 * LangGraph
+
+## Frontend
+
 * HTML
+* CSS
 * JavaScript
-
----
-
-# Main files
-
-```text
-ingest.py
-Reads the Excel transaction file.
-
-taxonomy.py
-Contains the transaction categories.
-
-rules.py
-Contains the simple rules used to check transaction categories.
-
-categorize.py
-Uses AI to categorize transactions.
-
-pnl.py
-Calculates the monthly P&L.
-
-variance.py
-Finds changes between months and prepares the data for explanation.
-
-agent.py
-Handles the AI financial analyst.
-
-store.py
-Stores user corrections.
-
-main.py
-Runs the FastAPI application.
-```
+* Marked.js for rendering AI responses
 
 ---
 
 # Testing
 
-Before submitting the project, I checked the main workflow:
+The main workflow was tested by checking:
 
-1. Upload the transaction file
-2. Check that transactions are loaded
-3. Check transaction categories
-4. Check transactions that need review
-5. Change a transaction category
-6. Check that the P&L updates
-7. Check the monthly P&L
-8. Check the monthly variances
-9. Check the transactions behind a variance
-10. Ask questions using the AI analyst
+1. Uploading the transaction file
+2. Loading the transactions
+3. Categorizing transactions
+4. Identifying transactions requiring review
+5. Manually changing a transaction category
+6. Confirming that the correction is persisted
+7. Checking the monthly P&L
+8. Checking non-P&L activity
+9. Checking monthly variance detection
+10. Asking questions using the AI analyst
+
+The key objective is to verify that financial totals remain based on the
+underlying transaction data rather than being generated by the AI.
 
 ---
 
@@ -383,17 +859,107 @@ Before submitting the project, I checked the main workflow:
 
 ## Delivery platform commissions
 
-Delivery platform commissions are treated as Operating Expenses instead
-of being directly removed from delivery revenue.
+Delivery platform commissions are currently treated as:
+
+```text
+Operating Expenses
+```
+
+rather than being directly deducted from delivery revenue.
 
 This is a design choice for this project.
 
-## Rule-based checking
+---
 
-The rule-based system mainly uses keywords and transaction descriptions.
+## Rule-based categorization
 
-It works well for the provided dataset, but it is not meant to handle
-every possible bank transaction format.
+The deterministic categorization system primarily relies on transaction
+descriptions and predefined keyword patterns.
 
-The AI helps handle transaction descriptions that do not match the
-simple rules.
+It works well for the provided dataset but is not designed to handle every
+possible bank transaction format.
+
+Transactions that do not match a deterministic rule are sent to the AI
+classification step and marked for review.
+
+---
+
+## Single-tenant storage
+
+The application currently stores state in:
+
+```text
+data/state.json
+```
+
+rather than using a production database.
+
+This is appropriate for the current take-home/project scope but would need
+to be replaced or extended for a multi-user production system.
+
+---
+
+## File storage
+
+Uploaded transactions are stored locally as:
+
+```text
+data/transactions.xlsx
+```
+
+A production deployment would typically use managed object storage and
+database-backed persistence.
+
+---
+
+## AI dependency
+
+AI-assisted categorization, variance explanation, and financial chat
+require a valid Groq API key.
+
+Deterministic P&L calculations do not depend on the AI model.
+
+---
+
+# Design Principle
+
+The central design principle behind Finz is:
+
+```text
+                    ┌─────────────────────┐
+                    │  Bank Transactions  │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │  Deterministic     │
+                    │  Rules             │
+                    └──────────┬──────────┘
+                               │
+                     unmatched transactions
+                               ↓
+                    ┌─────────────────────┐
+                    │   AI Categorization │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Human Review        │
+                    │ / Correction        │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Deterministic P&L   │
+                    │ Calculation         │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ Variance Detection  │
+                    └──────────┬──────────┘
+                               ↓
+                    ┌─────────────────────┐
+                    │ AI Explanation /    │
+                    │ Financial Chat      │
+                    └─────────────────────┘
+```
+
+The goal is to use AI where it adds value while keeping financial
+calculations traceable and deterministic.
