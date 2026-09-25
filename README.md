@@ -1,4 +1,4 @@
-# Finz — AI-Native Financial Review
+# Finz AI-Native Financial Review
 
 Finz is an AI-assisted financial review application built for NYC Restaurant Co.
 
