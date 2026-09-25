@@ -4,117 +4,205 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Finz — AI Financial Review</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --border: #e6e5e1;
-    --border-soft: #f0efec;
-    --text: #17171a;
-    --muted: #85837c;
-    --muted-2: #a5a39b;
-    --bg: #faf9f7;
-    --surface: #ffffff;
-    --accent: #17171a;
-    --flag: #b45309;
-    --flag-bg: #fef3e2;
-    --good: #15803d;
-    --good-bg: #eefbf2;
-    --bad: #b91c1c;
-    --shadow: 0 1px 2px rgba(20, 20, 18, 0.04), 0 1px 8px rgba(20, 20, 18, 0.03);
-    --radius: 12px;
+    --paper: #f2efe4;
+    --paper-line: #e6e0cb;
+    --surface: #fbfaf4;
+    --ink: #21201b;
+    --ink-soft: #6f6a56;
+    --ink-faint: #a49d80;
+    --rule: #d7d0b4;
+    --rule-strong: #b9b190;
+    --red: #a3312d;
+    --red-bg: #f5e6e0;
+    --green: #1d6a44;
+    --green-bg: #e3eee3;
+    --shadow: 2px 2px 0 rgba(33, 32, 27, 0.05);
+    --radius: 3px;
   }
   * { box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
-    background: var(--bg); color: var(--text);
+    font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    background-color: var(--paper);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      var(--paper-line) 27px,
+      var(--paper-line) 28px
+    );
+    color: var(--ink);
     margin: 0; padding: 0 24px 100px;
-    font-size: 14px; line-height: 1.55;
+    font-size: 13.5px; line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
-  header { max-width: 980px; margin: 0 auto; padding: 40px 0 8px; }
-  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.01em; font-weight: 650; }
-  .sub { color: var(--muted); font-size: 13.5px; }
-  main { max-width: 980px; margin: 0 auto; }
-  section { margin-top: 36px; }
+  header { max-width: 1000px; margin: 0 auto; padding: 44px 0 6px; }
+  .masthead { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .stamp {
+    display: inline-block;
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 800;
+    font-size: 34px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink);
+    border: 2.5px solid var(--ink);
+    padding: 2px 16px 6px;
+    transform: rotate(-1.6deg);
+    line-height: 1;
+  }
+  .masthead-sub {
+    font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .tear-line {
+    margin: 20px 0 6px;
+    border-top: 2px dashed var(--rule-strong);
+    position: relative;
+  }
+  .tear-line::before, .tear-line::after {
+    content: ""; position: absolute; top: -4px; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--paper); border: 1.5px solid var(--rule-strong);
+  }
+  .tear-line::before { left: -3px; }
+  .tear-line::after { right: -3px; }
+  .sub { color: var(--ink-soft); font-size: 12.5px; }
+  main { max-width: 1000px; margin: 0 auto; }
+  section { margin-top: 34px; }
   h2 {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 13px; letter-spacing: 0.02em; color: var(--text);
-    margin-bottom: 14px; font-weight: 650;
+    display: flex; align-items: center; gap: 12px;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);
+    margin-bottom: 14px; font-weight: 700;
   }
   h2 .step-num {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--text); color: var(--bg);
-    font-size: 11px; font-weight: 650; flex-shrink: 0;
+    width: 26px; height: 26px; flex-shrink: 0;
+    background: var(--surface); color: var(--ink);
+    border: 2px solid var(--ink); border-radius: 50%;
+    font-family: "Big Shoulders Display", sans-serif;
+    font-size: 15px; font-weight: 700;
   }
   .card {
-    border: 1px solid var(--border); border-radius: var(--radius);
+    border: 1px solid var(--rule); border-top: 3px double var(--ink);
+    border-radius: var(--radius);
     padding: 22px 24px; background: var(--surface); box-shadow: var(--shadow);
   }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px dashed var(--rule); }
   th {
-    color: var(--muted-2); font-weight: 650; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-soft); font-weight: 700; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--ink);
   }
   tbody tr { transition: background 0.1s ease; }
-  tbody tr:hover { background: var(--bg); }
+  tbody tr:hover { background: var(--paper); }
   tr:last-child td { border-bottom: none; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
   .pill {
-    display: inline-block; padding: 3px 9px; border-radius: 20px;
-    font-size: 10.5px; font-weight: 650; letter-spacing: 0.02em;
+    display: inline-block; padding: 2px 9px; border-radius: var(--radius);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    border: 1.5px solid currentColor;
   }
-  .pill.review { background: var(--flag-bg); color: var(--flag); }
-  .pill.high { background: var(--good-bg); color: var(--good); }
+  .pill.review { color: var(--red); background: var(--red-bg); }
+  .pill.high { color: var(--green); background: var(--green-bg); }
   button {
-    background: var(--accent); color: white; border: none; border-radius: 8px;
-    padding: 9px 18px; font-size: 13px; cursor: pointer; font-weight: 550;
-    transition: opacity 0.12s ease, transform 0.05s ease;
+    background: var(--ink); color: var(--surface); border: 2px solid var(--ink);
+    border-radius: var(--radius);
+    padding: 8px 16px; font-family: inherit; font-size: 12px; cursor: pointer;
+    font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    transition: background 0.12s ease, color 0.12s ease, transform 0.05s ease;
   }
-  button:hover { opacity: 0.82; }
+  button:hover { background: var(--surface); color: var(--ink); }
   button:active { transform: scale(0.98); }
-  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  button.secondary { background: var(--surface); color: var(--ink); }
   select, input[type=file], input[type=text] {
-    font-size: 13px; padding: 7px 10px; border: 1px solid var(--border);
-    border-radius: 8px; font-family: inherit; background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: 12.5px; padding: 7px 10px; border: 1.5px solid var(--rule-strong);
+    border-radius: var(--radius); background: var(--surface); color: var(--ink);
   }
-  select:focus, input:focus { outline: 2px solid var(--text); outline-offset: -1px; }
+  select:focus, input:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
   input[type=text] { flex: 1; }
-  input[type=text]::placeholder { color: var(--muted-2); }
+  input[type=text]::placeholder { color: var(--ink-faint); }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  .filters { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-soft); }
+  .filters { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--rule); }
   #chatLog { max-height: 440px; overflow-y: auto; margin-bottom: 14px; padding-right: 4px; }
-  .msg { padding: 11px 15px; border-radius: 10px; margin-bottom: 10px; max-width: 82%; font-size: 13.5px; line-height: 1.5; }
-  .msg.user { background: var(--text); color: var(--bg); margin-left: auto; }
-  .msg.bot { background: var(--bg); border: 1px solid var(--border-soft); }
-  .msg .tools { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: ui-monospace, monospace; }
+  .msg { padding: 11px 15px; border-radius: var(--radius); margin-bottom: 10px; max-width: 82%; font-size: 12.5px; line-height: 1.55; }
+  .msg.user {
+    background: var(--ink); color: var(--paper); margin-left: auto; white-space: pre-wrap;
+    transform: rotate(-0.3deg);
+  }
+  .msg.bot { background: var(--surface); border: 1.5px dashed var(--rule-strong); }
+  .msg .tools { font-size: 10.5px; color: var(--ink-faint); margin-top: 8px; border-top: 1px dashed var(--rule); padding-top: 6px; }
+
+  /* Markdown rendering inside bot messages */
+  .msg.bot h1, .msg.bot h2, .msg.bot h3, .msg.bot h4 {
+    margin: 12px 0 6px; font-weight: 700; line-height: 1.3;
+    font-family: "Big Shoulders Display", sans-serif; letter-spacing: 0.01em;
+  }
+  .msg.bot h1:first-child, .msg.bot h2:first-child,
+  .msg.bot h3:first-child, .msg.bot h4:first-child { margin-top: 0; }
+  .msg.bot h3 { font-size: 16px; }
+  .msg.bot h4 { font-size: 14px; }
+  .msg.bot p { margin: 6px 0; }
+  .msg.bot ul, .msg.bot ol { margin: 6px 0; padding-left: 20px; }
+  .msg.bot li { margin: 3px 0; }
+  .msg.bot strong { font-weight: 700; }
+  .msg.bot table {
+    margin: 10px 0; font-size: 11.5px; width: 100%;
+    border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden;
+  }
+  .msg.bot th, .msg.bot td { padding: 6px 10px; border-bottom: 1px dashed var(--rule); }
+  .msg.bot th { background: var(--paper); font-size: 10px; border-bottom: 2px solid var(--ink); }
+  .msg.bot tr:last-child td { border-bottom: none; }
+  .msg.bot code {
+    background: var(--paper); padding: 1px 5px; border-radius: 2px;
+    font-family: inherit; font-size: 11.5px; border: 1px solid var(--rule);
+  }
+  .msg.bot hr { border: none; border-top: 1px dashed var(--rule); margin: 10px 0; }
+
   .variance-card {
-    border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+    border: 1px solid var(--rule); border-left: 4px solid var(--ink); border-radius: var(--radius);
+    padding: 15px 18px; margin-bottom: 12px;
     background: var(--surface);
   }
+  .variance-card.pos-flag { border-left-color: var(--green); }
+  .variance-card.neg-flag { border-left-color: var(--red); }
   .variance-card:last-child { margin-bottom: 0; }
-  .variance-title { font-weight: 650; margin-bottom: 6px; font-size: 13.5px; }
-  .variance-card > div:nth-child(2) { color: #3a3a38; }
-  .muted { color: var(--muted); }
-  .empty { color: var(--muted-2); padding: 32px; text-align: center; font-size: 13px; }
+  .variance-title {
+    font-weight: 700; margin-bottom: 6px; font-size: 12.5px;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .variance-card > div:nth-child(2) { color: var(--ink); font-size: 12.5px; }
+  .muted { color: var(--ink-soft); }
+  .empty { color: var(--ink-faint); padding: 32px; text-align: center; font-size: 12.5px; }
   .badge-count {
-    background: var(--flag-bg); color: var(--flag); padding: 2px 9px;
-    border-radius: 10px; font-size: 11.5px; font-weight: 650; margin-left: 4px;
+    color: var(--red); background: var(--red-bg); border: 1.5px solid var(--red);
+    padding: 2px 9px; border-radius: var(--radius); font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase; margin-left: 4px;
+    display: inline-block; transform: rotate(-2deg);
   }
   .spinner {
-    display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border);
-    border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite;
+    display: inline-block; width: 11px; height: 11px; border: 2px solid var(--rule);
+    border-top-color: var(--ink); border-radius: 50%; animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 8px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Finz — AI Financial Review</h1>
-  <div class="sub">NYC Restaurant Co. · raw transactions → categorized P&amp;L → explained variances → ask a question</div>
+  <div class="masthead">
+    <span class="stamp">Finz</span>
+    <span class="masthead-sub">Financial Review — NYC Restaurant Co.</span>
+  </div>
+  <div class="tear-line" aria-hidden="true"></div>
+  <div class="sub">Raw transactions → categorized P&amp;L → explained variances → answered questions</div>
 </header>
 
 <main>
@@ -188,6 +276,12 @@ function fmt(n) {
   const v = Number(n);
   const s = Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
   return (v < 0 ? "-$" : "$") + s;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 async function loadCategories() {
@@ -289,12 +383,13 @@ async function loadVariances() {
   let html = "";
   for (const v of data.variances) {
     const dirClass = v.delta >= 0 ? "pos" : "neg";
-    html += `<div class="variance-card">
+    const flagClass = v.delta >= 0 ? "pos-flag" : "neg-flag";
+    html += `<div class="variance-card ${flagClass}">
       <div class="variance-title">${v.line}: ${v.from_month} → ${v.to_month}
         <span class="${dirClass}">${v.delta >= 0 ? "+" : ""}${fmt(v.delta)} (${v.pct_change >= 0 ? "+" : ""}${v.pct_change}%)</span>
       </div>
       <div>${v.explanation || ""}</div>
-      <div class="muted" style="margin-top:6px;font-size:12px;">Evidence: ${(v.evidence_transaction_ids||[]).join(", ")}</div>
+      <div class="muted" style="margin-top:6px;font-size:11px;">Evidence: ${(v.evidence_transaction_ids||[]).join(", ")}</div>
     </div>`;
   }
   container.innerHTML = html;
@@ -306,7 +401,7 @@ async function sendChat() {
   if (!q) return;
   input.value = "";
   const log = document.getElementById("chatLog");
-  log.innerHTML += `<div class="msg user">${q}</div>`;
+  log.innerHTML += `<div class="msg user">${escapeHtml(q)}</div>`;
   log.innerHTML += `<div class="msg bot" id="pending"><span class="spinner"></span> Thinking…</div>`;
   log.scrollTop = log.scrollHeight;
 
@@ -315,13 +410,14 @@ async function sendChat() {
       method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({question: q, history: chatHistory})
     });
-    document.getElementById("pending").outerHTML = `<div class="msg bot">${res.answer}
+    const rendered = marked.parse(res.answer || "");
+    document.getElementById("pending").outerHTML = `<div class="msg bot">${rendered}
       ${res.tool_calls && res.tool_calls.length ? `<div class="tools">used: ${res.tool_calls.map(t=>t.tool).join(", ")}</div>` : ""}
     </div>`;
     chatHistory.push({role: "user", content: q});
     chatHistory.push({role: "assistant", content: res.answer});
   } catch (e) {
-    document.getElementById("pending").outerHTML = `<div class="msg bot">Error: ${e.message}</div>`;
+    document.getElementById("pending").outerHTML = `<div class="msg bot">Error: ${escapeHtml(e.message)}</div>`;
   }
   log.scrollTop = log.scrollHeight;
 }
