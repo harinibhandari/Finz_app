@@ -88,37 +88,68 @@ def categorize_batch(rows: pd.DataFrame) -> List[dict]:
 
 
 def categorize_all(df: pd.DataFrame, batch_size: int = 20) -> pd.DataFrame:
-    """Categorize every transaction in df. Mutates and returns df."""
-    for start in range(0, len(df), batch_size):
-        batch = df.iloc[start:start + batch_size]
+    """Categorize transactions using rules first, then LLM only when needed."""
+
+    rule_matches = []
+
+    # First pass: run deterministic rules
+    for idx, row in df.iterrows():
+        rule_sub = rule_categorize(
+            row["description"],
+            row["counterparty"]
+        )
+        rule_matches.append(rule_sub)
+
+    df["rule_suggestion"] = rule_matches
+
+    # Transactions that rules could not classify
+    needs_llm = df[df["rule_suggestion"].isna()].copy()
+
+    # Use rule result directly when available
+    for idx, row in df[df["rule_suggestion"].notna()].iterrows():
+        rule_sub = row["rule_suggestion"]
+
+        df.at[idx, "subcategory"] = rule_sub
+        df.at[idx, "top_category"] = SUBCATEGORY_TO_TOP.get(rule_sub)
+        df.at[idx, "confidence"] = "high"
+        df.at[idx, "llm_suggestion"] = None
+        df.at[idx, "rationale"] = "Classified using deterministic accounting rule."
+
+    # Only send unmatched transactions to the LLM
+    for start in range(0, len(needs_llm), batch_size):
+        batch = needs_llm.iloc[start:start + batch_size]
+
         results = categorize_batch(batch)
         by_id = {r["id"]: r for r in results}
 
         for idx, row in batch.iterrows():
             llm_result = by_id.get(row["id"])
-            rule_sub = rule_categorize(row["description"], row["counterparty"])
 
-            if llm_result and llm_result.get("subcategory") in SUBCATEGORY_TO_TOP:
+            if (
+                llm_result
+                and llm_result.get("subcategory") in SUBCATEGORY_TO_TOP
+            ):
                 llm_sub = llm_result["subcategory"]
                 rationale = llm_result.get("rationale", "")
+
+                df.at[idx, "subcategory"] = llm_sub
+                df.at[idx, "top_category"] = SUBCATEGORY_TO_TOP.get(llm_sub)
+                df.at[idx, "confidence"] = "needs_review"
+                df.at[idx, "llm_suggestion"] = llm_sub
+                df.at[idx, "rationale"] = (
+                    "LLM classification without a matching deterministic rule. "
+                    "Manual review required."
+                )
             else:
-                # LLM gave an unusable/unknown category - fall back to rule if any
-                llm_sub = rule_sub
-                rationale = "Fell back to rule-based match (LLM output unusable)."
-
-            final_sub = llm_sub or rule_sub
-            confidence = "high" if (rule_sub and llm_sub and rule_sub == llm_sub) else "needs_review"
-
-            if final_sub is None:
-                final_sub = "Office & Admin Supplies"  # last-resort bucket, always flagged
-                confidence = "needs_review"
-                rationale = "No rule or LLM match found - defaulted, needs manual review."
-
-            df.at[idx, "subcategory"] = final_sub
-            df.at[idx, "top_category"] = SUBCATEGORY_TO_TOP.get(final_sub)
-            df.at[idx, "confidence"] = confidence
-            df.at[idx, "rule_suggestion"] = rule_sub
-            df.at[idx, "llm_suggestion"] = llm_sub
-            df.at[idx, "rationale"] = rationale
+                df.at[idx, "subcategory"] = "Office & Admin Supplies"
+                df.at[idx, "top_category"] = SUBCATEGORY_TO_TOP.get(
+                    "Office & Admin Supplies"
+                )
+                df.at[idx, "confidence"] = "needs_review"
+                df.at[idx, "llm_suggestion"] = None
+                df.at[idx, "rationale"] = (
+                    "No deterministic or valid LLM classification found. "
+                    "Manual review required."
+                )
 
     return df

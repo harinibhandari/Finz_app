@@ -44,27 +44,48 @@ def _startup():
     if existing is not None:
         STATE["df"] = existing
 
-
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
-    """Ingest + categorize a transaction file in one step."""
-    dest = DATA_DIR / "transactions.xlsx"
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    try:
+        dest = DATA_DIR / "transactions.xlsx"
 
-    df = load_transactions(str(dest))
-    df = categorize_all(df)
-    STATE["df"] = df
-    save_state(df)
+        with open(dest, "wb") as f:
+            shutil.copyfileobj(file.file, f)
 
-    needs_review = int((df["confidence"] == "needs_review").sum())
-    return {
-        "rows_ingested": len(df),
-        "months": sorted(df["month"].unique().tolist()),
-        "needs_review": needs_review,
-    }
+        print("1. File saved")
 
+        df = load_transactions(str(dest))
+        print("2. File loaded:", len(df), "rows")
 
+        df = categorize_all(df)
+        print("3. Categorization completed")
+
+        STATE["df"] = df
+        save_state(df)
+        print("4. State saved")
+
+        needs_review = int(
+            (df["confidence"] == "needs_review").sum()
+        )
+
+        return {
+            "rows_ingested": len(df),
+            "months": sorted(df["month"].unique().tolist()),
+            "needs_review": needs_review,
+        }
+
+    except Exception as e:
+        import traceback
+
+        print("\n========== UPLOAD ERROR ==========")
+        traceback.print_exc()
+        print("==================================\n")
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
 @app.get("/api/transactions")
 def get_transactions(month: str | None = None, category: str | None = None,
                       confidence: str | None = None):
@@ -113,14 +134,13 @@ def get_non_pnl():
 
 
 @app.get("/api/variances")
-def get_variances(with_explanation: bool = True):
+def get_variances():
     df = _get_df()
     p = monthly_pnl(df)
-    variances = detect_variances(p)
-    if with_explanation:
-        variances = [variance_with_evidence(df, v) for v in variances]
-    return {"variances": variances}
 
+    variances = detect_variances(p)
+
+    return {"variances": variances}
 
 class ChatRequest(BaseModel):
     question: str
@@ -129,11 +149,19 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 def chat(body: ChatRequest):
-    df = _get_df()
-    result = agent_module.ask(df, body.question, body.history)
-    return result
+    try:
+        df = _get_df()
+        result = agent_module.ask(df, body.question, body.history)
+        return result
 
-
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
 @app.get("/api/categories")
 def get_categories():
     return {"categories": ALL_TOP_LEVEL, "subcategories": list(SUBCATEGORY_TO_TOP.keys())}
