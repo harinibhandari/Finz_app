@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finz — AI Financial Review</title>
+<style>
+  :root {
+    --border: #e6e5e1;
+    --border-soft: #f0efec;
+    --text: #17171a;
+    --muted: #85837c;
+    --muted-2: #a5a39b;
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --accent: #17171a;
+    --flag: #b45309;
+    --flag-bg: #fef3e2;
+    --good: #15803d;
+    --good-bg: #eefbf2;
+    --bad: #b91c1c;
+    --shadow: 0 1px 2px rgba(20, 20, 18, 0.04), 0 1px 8px rgba(20, 20, 18, 0.03);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
+    background: var(--bg); color: var(--text);
+    margin: 0; padding: 0 24px 100px;
+    font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { max-width: 980px; margin: 0 auto; padding: 40px 0 8px; }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.01em; font-weight: 650; }
+  .sub { color: var(--muted); font-size: 13.5px; }
+  main { max-width: 980px; margin: 0 auto; }
+  section { margin-top: 36px; }
+  h2 {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; letter-spacing: 0.02em; color: var(--text);
+    margin-bottom: 14px; font-weight: 650;
+  }
+  h2 .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--text); color: var(--bg);
+    font-size: 11px; font-weight: 650; flex-shrink: 0;
+  }
+  .card {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px 24px; background: var(--surface); box-shadow: var(--shadow);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+  th {
+    color: var(--muted-2); font-weight: 650; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  tbody tr { transition: background 0.1s ease; }
+  tbody tr:hover { background: var(--bg); }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .pill {
+    display: inline-block; padding: 3px 9px; border-radius: 20px;
+    font-size: 10.5px; font-weight: 650; letter-spacing: 0.02em;
+  }
+  .pill.review { background: var(--flag-bg); color: var(--flag); }
+  .pill.high { background: var(--good-bg); color: var(--good); }
+  button {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 9px 18px; font-size: 13px; cursor: pointer; font-weight: 550;
+    transition: opacity 0.12s ease, transform 0.05s ease;
+  }
+  button:hover { opacity: 0.82; }
+  button:active { transform: scale(0.98); }
+  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  select, input[type=file], input[type=text] {
+    font-size: 13px; padding: 7px 10px; border: 1px solid var(--border);
+    border-radius: 8px; font-family: inherit; background: var(--surface); color: var(--text);
+  }
+  select:focus, input:focus { outline: 2px solid var(--text); outline-offset: -1px; }
+  input[type=text] { flex: 1; }
+  input[type=text]::placeholder { color: var(--muted-2); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .filters { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-soft); }
+  #chatLog { max-height: 440px; overflow-y: auto; margin-bottom: 14px; padding-right: 4px; }
+  .msg { padding: 11px 15px; border-radius: 10px; margin-bottom: 10px; max-width: 82%; font-size: 13.5px; line-height: 1.5; }
+  .msg.user { background: var(--text); color: var(--bg); margin-left: auto; }
+  .msg.bot { background: var(--bg); border: 1px solid var(--border-soft); }
+  .msg .tools { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: ui-monospace, monospace; }
+  .variance-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+    background: var(--surface);
+  }
+  .variance-card:last-child { margin-bottom: 0; }
+  .variance-title { font-weight: 650; margin-bottom: 6px; font-size: 13.5px; }
+  .variance-card > div:nth-child(2) { color: #3a3a38; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted-2); padding: 32px; text-align: center; font-size: 13px; }
+  .badge-count {
+    background: var(--flag-bg); color: var(--flag); padding: 2px 9px;
+    border-radius: 10px; font-size: 11.5px; font-weight: 650; margin-left: 4px;
+  }
+  .spinner {
+    display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border);
+    border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Finz — AI Financial Review</h1>
+  <div class="sub">NYC Restaurant Co. · raw transactions → categorized P&amp;L → explained variances → ask a question</div>
+</header>
+
+<main>
+  <section>
+    <h2><span class="step-num">1</span>Upload transactions</h2>
+    <div class="card row">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <button onclick="uploadFile()">Ingest &amp; categorize</button>
+      <span id="uploadStatus" class="muted"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">2</span>Transactions <span id="reviewCount" class="badge-count" style="display:none"></span></h2>
+    <div class="card">
+      <div class="filters row">
+        <select id="monthFilter" onchange="loadTransactions()"><option value="">All months</option></select>
+        <select id="categoryFilter" onchange="loadTransactions()">
+          <option value="">All categories</option>
+          <option>Revenue</option><option>COGS</option><option>Payroll</option>
+          <option>Operating Expenses</option><option>Non-P&L</option>
+        </select>
+        <select id="confidenceFilter" onchange="loadTransactions()">
+          <option value="">All confidence</option>
+          <option value="needs_review">Needs review only</option>
+          <option value="high">High confidence only</option>
+        </select>
+      </div>
+      <div id="txContainer" class="empty">Upload a file to see transactions.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">3</span>Monthly P&amp;L</h2>
+    <div class="card">
+      <div id="pnlContainer" class="empty">No data yet.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">4</span>Variances</h2>
+    <div class="card">
+      <div id="varianceContainer" class="empty">No data yet.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="step-num">5</span>Ask the AI analyst</h2>
+    <div class="card">
+      <div id="chatLog"></div>
+      <div class="row">
+        <input type="text" id="chatInput" placeholder="e.g. Why did operating profit change between Feb and March?" style="flex:1" onkeydown="if(event.key==='Enter') sendChat()">
+        <button onclick="sendChat()">Ask</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API = "";
+let SUBCATEGORIES = [];
+let chatHistory = [];
+
+async function api(path, opts) {
+  const res = await fetch(API + path, opts);
+  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  return res.json();
+}
+
+function fmt(n) {
+  const v = Number(n);
+  const s = Math.abs(v).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return (v < 0 ? "-$" : "$") + s;
+}
+
+async function loadCategories() {
+  const data = await api("/api/categories");
+  SUBCATEGORIES = data.subcategories;
+}
+
+async function uploadFile() {
+  const f = document.getElementById("fileInput").files[0];
+  if (!f) { alert("Choose a file first"); return; }
+  const status = document.getElementById("uploadStatus");
+  status.innerHTML = '<span class="spinner"></span> Categorizing transactions (this calls the LLM for each batch, may take a bit)...';
+  const fd = new FormData(); fd.append("file", f);
+  try {
+    const res = await api("/api/upload", { method: "POST", body: fd });
+    status.textContent = `Ingested ${res.rows_ingested} transactions across ${res.months.length} months. ${res.needs_review} flagged for review.`;
+    const monthSel = document.getElementById("monthFilter");
+    monthSel.innerHTML = '<option value="">All months</option>' + res.months.map(m => `<option>${m}</option>`).join("");
+    await Promise.all([loadTransactions(), loadPnl(), loadVariances()]);
+  } catch (e) {
+    status.textContent = "Error: " + e.message;
+  }
+}
+
+async function loadTransactions() {
+  const month = document.getElementById("monthFilter").value;
+  const category = document.getElementById("categoryFilter").value;
+  const confidence = document.getElementById("confidenceFilter").value;
+  const params = new URLSearchParams();
+  if (month) params.set("month", month);
+  if (category) params.set("category", category);
+  if (confidence) params.set("confidence", confidence);
+  let rows;
+  try { rows = await api("/api/transactions?" + params.toString()); }
+  catch (e) { return; }
+
+  const allRows = await api("/api/transactions");
+  const reviewCount = allRows.filter(r => r.confidence === "needs_review").length;
+  const badge = document.getElementById("reviewCount");
+  if (reviewCount > 0) { badge.style.display = "inline-block"; badge.textContent = reviewCount + " need review"; }
+  else { badge.style.display = "none"; }
+
+  const container = document.getElementById("txContainer");
+  if (!rows.length) { container.innerHTML = '<div class="empty">No transactions match these filters.</div>'; return; }
+
+  let html = `<table><thead><tr><th>Date</th><th>Description</th><th>Counterparty</th>
+    <th class="num">Amount</th><th>Category</th><th>Confidence</th><th></th></tr></thead><tbody>`;
+  for (const r of rows) {
+    const amtClass = r.amount < 0 ? "neg" : "pos";
+    const pill = r.confidence === "needs_review"
+      ? `<span class="pill review">needs review</span>` : `<span class="pill high">high</span>`;
+    html += `<tr>
+      <td>${r.date}</td>
+      <td>${r.description}${r.corrected ? ' <span class="muted">(corrected)</span>' : ''}</td>
+      <td class="muted">${r.counterparty}</td>
+      <td class="num ${amtClass}">${fmt(r.amount)}</td>
+      <td>${r.subcategory || "-"}</td>
+      <td>${pill}</td>
+      <td><select onchange="correctTx('${r.id}', this.value)">
+        <option value="">Recategorize…</option>
+        ${SUBCATEGORIES.map(s => `<option ${s===r.subcategory?"selected":""}>${s}</option>`).join("")}
+      </select></td>
+    </tr>`;
+  }
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+async function correctTx(id, subcategory) {
+  if (!subcategory) return;
+  await api("/api/correct", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({transaction_id: id, subcategory})
+  });
+  await Promise.all([loadTransactions(), loadPnl(), loadVariances()]);
+}
+
+async function loadPnl() {
+  const data = await api("/api/pnl");
+  const container = document.getElementById("pnlContainer");
+  if (!data.pnl.length) { container.innerHTML = '<div class="empty">No data yet.</div>'; return; }
+  const cols = ["Revenue","COGS","Gross Profit","Payroll","Operating Expenses","Operating Profit"];
+  let html = `<table><thead><tr><th>Month</th>${cols.map(c=>`<th class="num">${c}</th>`).join("")}</tr></thead><tbody>`;
+  for (const row of data.pnl) {
+    html += `<tr><td>${row.month}</td>${cols.map(c => {
+      const cls = c === "Operating Profit" ? (row[c] >= 0 ? "pos" : "neg") : "";
+      return `<td class="num ${cls}">${fmt(row[c])}</td>`;
+    }).join("")}</tr>`;
+  }
+  html += "</tbody></table>";
+  container.innerHTML = html;
+}
+
+async function loadVariances() {
+  const container = document.getElementById("varianceContainer");
+  container.innerHTML = '<div class="empty"><span class="spinner"></span> Analyzing variances…</div>';
+  const data = await api("/api/variances");
+  if (!data.variances.length) { container.innerHTML = '<div class="empty">No material variances detected.</div>'; return; }
+  let html = "";
+  for (const v of data.variances) {
+    const dirClass = v.delta >= 0 ? "pos" : "neg";
+    html += `<div class="variance-card">
+      <div class="variance-title">${v.line}: ${v.from_month} → ${v.to_month}
+        <span class="${dirClass}">${v.delta >= 0 ? "+" : ""}${fmt(v.delta)} (${v.pct_change >= 0 ? "+" : ""}${v.pct_change}%)</span>
+      </div>
+      <div>${v.explanation || ""}</div>
+      <div class="muted" style="margin-top:6px;font-size:12px;">Evidence: ${(v.evidence_transaction_ids||[]).join(", ")}</div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = "";
+  const log = document.getElementById("chatLog");
+  log.innerHTML += `<div class="msg user">${q}</div>`;
+  log.innerHTML += `<div class="msg bot" id="pending"><span class="spinner"></span> Thinking…</div>`;
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const res = await api("/api/chat", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({question: q, history: chatHistory})
+    });
+    document.getElementById("pending").outerHTML = `<div class="msg bot">${res.answer}
+      ${res.tool_calls && res.tool_calls.length ? `<div class="tools">used: ${res.tool_calls.map(t=>t.tool).join(", ")}</div>` : ""}
+    </div>`;
+    chatHistory.push({role: "user", content: q});
+    chatHistory.push({role: "assistant", content: res.answer});
+  } catch (e) {
+    document.getElementById("pending").outerHTML = `<div class="msg bot">Error: ${e.message}</div>`;
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+loadCategories();
+</script>
+</body>
+</html>
