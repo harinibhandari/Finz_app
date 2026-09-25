@@ -44,7 +44,6 @@ You need:
 
 - Python 3.10 or newer
 - Git
-- A Groq API key
 
 ## 1. Clone the project
 
@@ -74,24 +73,6 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
-
-## 4. Add the API key
-
-Create a `.env` file.
-
-You can copy `.env.example` and rename it to `.env`.
-
-Add:
-
-```env
-GROQ_API_KEY=your_api_key_here
-```
-
-You can get a Groq API key here:
-
-[https://console.groq.com/keys](https://console.groq.com/keys)
-
-Do not upload your `.env` file to GitHub.
 
 ## 5. Start the app
 

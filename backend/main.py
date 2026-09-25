@@ -140,7 +140,11 @@ def get_variances():
 
     variances = detect_variances(p)
 
-    return {"variances": variances}
+    results = []
+    for variance in variances:
+        results.append(variance_with_evidence(df, variance))
+
+    return {"variances": results}
 
 class ChatRequest(BaseModel):
     question: str

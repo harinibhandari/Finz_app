@@ -202,7 +202,8 @@
     <span class="masthead-sub">Financial Review — NYC Restaurant Co.</span>
   </div>
   <div class="tear-line" aria-hidden="true"></div>
-  <div class="sub">Raw transactions → categorized P&amp;L → explained variances → answered questions</div>
+ <div class="sub">Raw transactions → deterministic categorization → P&amp;L → evidence-based variances → answered questions
+</div>
 </header>
 
 <main>
@@ -250,7 +251,7 @@
   </section>
 
   <section>
-    <h2><span class="step-num">5</span>Ask the AI analyst</h2>
+    <h2><span class="step-num">5</span>Ask the Financial analyst</h2>
     <div class="card">
       <div id="chatLog"></div>
       <div class="row">
@@ -293,7 +294,7 @@ async function uploadFile() {
   const f = document.getElementById("fileInput").files[0];
   if (!f) { alert("Choose a file first"); return; }
   const status = document.getElementById("uploadStatus");
-  status.innerHTML = '<span class="spinner"></span> Categorizing transactions (this calls the LLM for each batch, may take a bit)...';
+  status.innerHTML ='<span class="spinner"></span> Categorizing transactions using deterministic accounting rules...';
   const fd = new FormData(); fd.append("file", f);
   try {
     const res = await api("/api/upload", { method: "POST", body: fd });
